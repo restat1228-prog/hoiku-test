@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>発達記録テンプレ生成（観察メモ→領域→配慮事項）</title>
+  <style>
+    :root { --bd:#e5e7eb; --bg:#f8fafc; --tx:#0f172a; --mut:#64748b; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif;
+           margin: 0; color: var(--tx); background: white; }
+    header { padding: 16px 16px 8px; border-bottom: 1px solid var(--bd); position: sticky; top:0; background:white; z-index: 10; }
+    header h1 { font-size: 16px; margin: 0 0 6px; }
+    header p { margin: 0; color: var(--mut); font-size: 12px; }
+    main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    @media(min-width: 980px){ .grid { grid-template-columns: 1fr 1fr; } }
+    .card { border:1px solid var(--bd); border-radius: 12px; padding: 12px; background: white; }
+    .card h2 { font-size: 14px; margin: 0 0 10px; }
+    .row { display: grid; grid-template-columns: 1fr; gap: 8px; }
+    @media(min-width: 700px){ .row.cols2 { grid-template-columns: 1fr 1fr; } }
+    label { font-size: 12px; color: var(--mut); display:block; margin-bottom: 4px; }
+    input, select, textarea, button {
+      font: inherit; border:1px solid var(--bd); border-radius: 10px; padding: 10px;
+      background: white;
+    }
+    textarea { width: 100%; min-height: 120px; resize: vertical; line-height: 1.5; }
+    .small textarea { min-height: 90px; }
+    button { cursor:pointer; }
+    button.primary { background: #0ea5e9; color: white; border-color:#0ea5e9; }
+    button.ghost { background: white; }
+    button.danger { background:#ef4444; color:white; border-color:#ef4444; }
+    .btns { display:flex; flex-wrap: wrap; gap: 8px; }
+    .muted { color: var(--mut); font-size: 12px; }
+    .pill { display:inline-block; font-size: 11px; padding: 3px 8px; border:1px solid var(--bd); border-radius: 999px; background: var(--bg); color: var(--mut); }
+    .list { display:flex; flex-direction: column; gap: 10px; }
+    .item { border:1px dashed var(--bd); border-radius: 12px; padding: 10px; background: var(--bg); }
+    .item h3 { margin: 0 0 8px; font-size: 13px; }
+    .two { display:grid; grid-template-columns: 1fr; gap: 8px; }
+    @media(min-width: 700px){ .two { grid-template-columns: 1fr 1fr; } }
+    pre.output { white-space: pre-wrap; word-break: break-word; background: #0b1220; color:#e2e8f0; border-radius: 12px; padding: 12px; border: 1px solid #111827; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>発達記録テンプレ生成（観察メモ→領域→配慮事項）</h1>
+  <p>観察メモを貼る → 自動仕分け（ざっくり） → 文章を整える → 配慮事項（課題/根拠/支援） → 出力</p>
+</header>
+
+<main>
+  <div class="grid">
+    <section class="card">
+      <h2>1) 基本情報</h2>
+      <div class="row cols2">
+        <div>
+          <label>児童名（任意）</label>
+          <input id="childName" placeholder="例：〇〇 〇〇" />
+        </div>
+        <div>
+          <label>年齢 / 学年（任意）</label>
+          <input id="age" placeholder="例：5歳 / 年長" />
+        </div>
+      </div>
+
+      <div class="row cols2" style="margin-top:8px;">
+        <div>
+          <label>記録日</label>
+          <input id="date" type="date" />
+        </div>
+        <div>
+          <label>提出種別（例：保育要録 / 発達記録）</label>
+          <input id="docType" placeholder="例：保育要録（小学校接続）" />
+        </div>
+      </div>
+
+      <div class="row cols2" style="margin-top:8px;">
+        <div>
+          <label>作成頻度（運用メモ）</label>
+          <select id="freq">
+            <option value="年2回">年2回</option>
+            <option value="年4回">年4回</option>
+            <option value="都度">都度</option>
+          </select>
+        </div>
+        <div>
+          <label>書き手（任意）</label>
+          <input id="author" placeholder="例：担任 / 支援員" />
+        </div>
+      </div>
+
+      <p class="muted" style="margin-top:10px;">
+        ※個人情報はここでは端末内（ブラウザ）に保存されます。共有PCなら「リセット」で消してから閉じてね。
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>2) 観察メモ（ここに貼る）</h2>
+      <label>観察メモ（自由記述）</label>
+      <textarea id="raw" placeholder="例：ルールの理解はあるが、相手に伝えたい気持ちが強く強い口調になってしまう。&#10;例：集団遊びでは順番を守れるが、納得いかないときに言葉が強くなる。"></textarea>
+
+      <div class="btns" style="margin-top:8px;">
+        <button class="primary" id="btnCategorize">自動仕分け（領域へ）</button>
+        <button class="ghost" id="btnExample">例文を入れる</button>
+        <button class="ghost" id="btnSaveDraft">下書き保存</button>
+        <button class="danger" id="btnReset">リセット（端末内データ削除）</button>
+      </div>
+      <p class="muted" style="margin-top:8px;">
+        ※自動仕分けはキーワードベースの「ざっくり」です。最後は必ず目視で整えてね。
+      </p>
+    </section>
+  </div>
+
+  <div class="grid" style="margin-top:12px;">
+    <section class="card">
+      <h2>3) 発達領域（文章を整える） <span class="pill">所見</span></h2>
+
+      <div class="list">
+        <div class="item small">
+          <h3>（A）認知・理解</h3>
+          <label>ポイント（観察→文章化）</label>
+          <textarea id="dom_cog" placeholder="例：ルール理解や状況把握は概ね可能。活動の手順を理解し、見通しを持って取り組める場面が増えている。"></textarea>
+        </div>
+
+        <div class="item small">
+          <h3>（B）言語・表現</h3>
+          <label>ポイント</label>
+          <textarea id="dom_lang" placeholder="例：自分の考えを言葉で伝えようとする意欲が高い。一方で気持ちが高まると語気が強くなることがある。"></textarea>
+        </div>
+
+        <div class="item small">
+          <h3>（C）社会性・対人</h3>
+          <label>ポイント</label>
+          <textarea id="dom_soc" placeholder="例：友だちとの関わりを持とうとする。ルールは守れるが、相手への伝え方が強くなることがあり、言い換えや間の取り方を一緒に考える必要がある。"></textarea>
+        </div>
+
+        <div class="item small">
+          <h3>（D）情緒・自己調整</h3>
+          <label>ポイント</label>
+          <textarea id="dom_emo" placeholder="例：納得できない場面で感情が高まりやすい。落ち着くまでの時間が短くなってきているが、クールダウンの手順を共有すると安定しやすい。"></textarea>
+        </div>
+
+        <div class="item small">
+          <h3>（E）運動（粗大/微細）</h3>
+          <label>ポイント</label>
+          <textarea id="dom_motor" placeholder="例：活動参加に支障なし。微細動作（はさみ・鉛筆等）は課題/強みがあれば記載。"></textarea>
+        </div>
+
+        <div class="item small">
+          <h3>（F）生活（身辺自立・集団生活）</h3>
+          <label>ポイント</label>
+          <textarea id="dom_life" placeholder="例：身支度や片付けは促しがあると取り組める。集団での切り替えは見通し提示で安定しやすい。"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>4) 配慮事項（次の支援・目標） <span class="pill">課題→根拠→支援方針</span></h2>
+
+      <div class="btns" style="margin-bottom:10px;">
+        <button class="primary" id="btnAddCare">配慮事項を追加</button>
+        <button class="ghost" id="btnAddCareExample">例（ルール理解はあるが口調が強い）を追加</button>
+      </div>
+
+      <div id="careList" class="list"></div>
+
+      <p class="muted" style="margin-top:10px;">
+        コツ：配慮事項は「できている点を認める」→「困りごとの具体」→「次の一手（支援・目標）」の順で書くと読みやすい。
+      </p>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:12px;">
+    <h2>5) 出力</h2>
+    <div class="btns">
+      <button class="primary" id="btnGenerate">全文を生成</button>
+      <button class="ghost" id="btnCopy">出力をコピー</button>
+      <button class="ghost" id="btnDownload">txtで保存</button>
+    </div>
+
+    <p class="muted" style="margin-top:8px;">
+      出力は「概要 → 領域別所見 → 配慮事項（次の支援・目標）」の順で並びます。
+    </p>
+
+    <pre id="out" class="output">ここに生成結果が出ます。</pre>
+  </section>
+</main>
+
+<script>
+  // --------- Utility ----------
+  const $ = (id) => document.getElementById(id);
+  const nowISO = () => {
+    const d = new Date();
+    const off = d.getTimezoneOffset();
+    const local = new Date(d.getTime() - off * 60 * 1000);
+    return local.toISOString().slice(0,10);
+  };
+
+  const STORAGE_KEY = "dev_record_app_v1";
+
+  function loadDraft() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw);
+
+      $("childName").value = s.childName ?? "";
+      $("age").value = s.age ?? "";
+      $("date").value = s.date ?? nowISO();
+      $("docType").value = s.docType ?? "";
+      $("freq").value = s.freq ?? "年2回";
+      $("author").value = s.author ?? "";
+      $("raw").value = s.raw ?? "";
+
+      $("dom_cog").value = s.dom_cog ?? "";
+      $("dom_lang").value = s.dom_lang ?? "";
+      $("dom_soc").value = s.dom_soc ?? "";
+      $("dom_emo").value = s.dom_emo ?? "";
+      $("dom_motor").value = s.dom_motor ?? "";
+      $("dom_life").value = s.dom_life ?? "";
+
+      // care items
+      const cares = Array.isArray(s.cares) ? s.cares : [];
+      cares.forEach(c => addCareItem(c.title, c.issue, c.basis, c.support));
+      $("out").textContent = s.out ?? $("out").textContent;
+    } catch(e) {
+      console.warn(e);
+    }
+  }
+
+  function saveDraft() {
+    const cares = [...document.querySelectorAll(".careItem")].map(el => ({
+      title: el.querySelector(".careTitle").value,
+      issue: el.querySelector(".careIssue").value,
+      basis: el.querySelector(".careBasis").value,
+      support: el.querySelector(".careSupport").value,
+    }));
+
+    const s = {
+      childName: $("childName").value,
+      age: $("age").value,
+      date: $("date").value,
+      docType: $("docType").value,
+      freq: $("freq").value,
+      author: $("author").value,
+      raw: $("raw").value,
+      dom_cog: $("dom_cog").value,
+      dom_lang: $("dom_lang").value,
+      dom_soc: $("dom_soc").value,
+      dom_emo: $("dom_emo").value,
+      dom_motor: $("dom_motor").value,
+      dom_life: $("dom_life").value,
+      cares,
+      out: $("out").textContent,
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
+  }
+
+  function resetAll() {
+    localStorage.removeItem(STORAGE_KEY);
+    location.reload();
+  }
+
+  // --------- Care Items ----------
+  function addCareItem(title="", issue="", basis="", support="") {
+    const wrap = document.createElement("div");
+    wrap.className = "item careItem";
+    wrap.innerHTML = `
+      <div class="two" style="align-items:end;">
+        <div>
+          <label>見出し（短く）</label>
+          <input class="careTitle" placeholder="例：対人場面での言葉の選び方" value="${escapeHtml(title)}">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" class="ghost btnUp">↑</button>
+          <button type="button" class="ghost btnDown">↓</button>
+          <button type="button" class="danger btnDel">削除</button>
+        </div>
+      </div>
+
+      <div class="two" style="margin-top:8px;">
+        <div>
+          <label>課題（何が起きている？）</label>
+          <textarea class="careIssue" placeholder="例：相手に伝えたい気持ちが強く、語気が強くなってしまう場面がある。">${escapeHtml(issue)}</textarea>
+        </div>
+        <div>
+          <label>根拠（できている点/背景/状況）</label>
+          <textarea class="careBasis" placeholder="例：ルール理解はあり、正しさを共有したい意欲が高い。感情が高まると表現が直線的になる。">${escapeHtml(basis)}</textarea>
+        </div>
+      </div>
+
+      <div style="margin-top:8px;">
+        <label>支援方針・目標（次にどうする？）</label>
+        <textarea class="careSupport" placeholder="例：ルール理解を認めた上で、友だちへの言い換え（やさしい言い方/提案の形）を一緒に考え練習する。気持ちが高まったときは一呼吸の合図を共有する。">${escapeHtml(support)}</textarea>
+      </div>
+    `;
+    $("careList").appendChild(wrap);
+
+    wrap.querySelector(".btnDel").addEventListener("click", () => {
+      wrap.remove();
+      saveDraft();
+    });
+
+    wrap.querySelector(".btnUp").addEventListener("click", () => {
+      const prev = wrap.previousElementSibling;
+      if (prev) wrap.parentNode.insertBefore(wrap, prev);
+      saveDraft();
+    });
+    wrap.querySelector(".btnDown").addEventListener("click", () => {
+      const next = wrap.nextElementSibling;
+      if (next) wrap.parentNode.insertBefore(next, wrap);
+      saveDraft();
+    });
+
+    // autosave on input
+    wrap.querySelectorAll("input,textarea").forEach(el => {
+      el.addEventListener("input", () => saveDraft());
+    });
+  }
+
+  function escapeHtml(str) {
+    return (str ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");
+  }
+
+  // --------- Categorize ----------
+  const keywordMap = [
+    { dom: "dom_cog", keys: ["理解","ルール","見通し","順番","手順","概念","集中","注意","こだわり","切り替え"] },
+    { dom: "dom_lang", keys: ["言葉","話す","伝える","説明","質問","語彙","会話","表現","口調","声","言い方"] },
+    { dom: "dom_soc", keys: ["友だち","相手","集団","遊び","関わり","協力","順守","トラブル","やりとり","仲間"] },
+    { dom: "dom_emo", keys: ["不安","怒","泣","気持ち","落ち着","我慢","興奮","緊張","パニック","感情"] },
+    { dom: "dom_motor", keys: ["走","跳","投","姿勢","運動","はさみ","鉛筆","手先","巧緻","バランス"] },
+    { dom: "dom_life", keys: ["着替","排泄","食","睡眠","片付け","身支度","生活","登園","準備","清潔"] },
+  ];
+
+  function splitSentences(text) {
+    return (text || "")
+      .split(/\n+/)
+      .flatMap(line => line.split(/(?<=[。！？\?！])\s*/))
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
+  function categorize() {
+    const raw = $("raw").value.trim();
+    if (!raw) return;
+
+    const sentences = splitSentences(raw);
+    const buckets = { dom_cog:[], dom_lang:[], dom_soc:[], dom_emo:[], dom_motor:[], dom_life:[], other:[] };
+
+    for (const s of sentences) {
+      let best = null;
+      let bestScore = 0;
+
+      for (const m of keywordMap) {
+        const score = m.keys.reduce((acc,k)=> acc + (s.includes(k) ? 1 : 0), 0);
+        if (score > bestScore) { bestScore = score; best = m.dom; }
+      }
+      if (best && bestScore > 0) buckets[best].push("・" + s);
+      else buckets.other.push("・" + s);
+    }
+
+    // append to each domain textarea
+    const add = (id, lines) => {
+      if (!lines.length) return;
+      const t = $(id).value.trim();
+      const prefix = t ? (t.endsWith("\n") ? "" : "\n") : "";
+      $(id).value = (t + prefix + lines.join("\n")).trim();
+    };
+
+    add("dom_cog", buckets.dom_cog);
+    add("dom_lang", buckets.dom_lang);
+    add("dom_soc", buckets.dom_soc);
+    add("dom_emo", buckets.dom_emo);
+    add("dom_motor", buckets.dom_motor);
+    add("dom_life", buckets.dom_life);
+
+    if (buckets.other.length) {
+      // other → 社会性に入れがちなので最後に控えめに付与（必要なら手で移動）
+      add("dom_soc", ["", "【未分類（要確認）】", ...buckets.other]);
+    }
+
+    saveDraft();
+  }
+
+  // --------- Output ----------
+  function generate() {
+    const info = {
+      childName: $("childName").value.trim(),
+      age: $("age").value.trim(),
+      date: $("date").value || nowISO(),
+      docType: $("docType").value.trim(),
+      freq: $("freq").value,
+      author: $("author").value.trim(),
+      raw: $("raw").value.trim(),
+      dom: {
+        cog: $("dom_cog").value.trim(),
+        lang: $("dom_lang").value.trim(),
+        soc: $("dom_soc").value.trim(),
+        emo: $("dom_emo").value.trim(),
+        motor: $("dom_motor").value.trim(),
+        life: $("dom_life").value.trim(),
+      }
+    };
+
+    const cares = [...document.querySelectorAll(".careItem")].map(el => ({
+      title: el.querySelector(".careTitle").value.trim(),
+      issue: el.querySelector(".careIssue").value.trim(),
+      basis: el.querySelector(".careBasis").value.trim(),
+      support: el.querySelector(".careSupport").value.trim(),
+    })).filter(c => c.title || c.issue || c.basis || c.support);
+
+    const head = [
+      "【記録】",
+      `日付：${info.date}`,
+      info.docType ? `種別：${info.docType}` : null,
+      info.freq ? `作成頻度：${info.freq}` : null,
+      info.author ? `作成：${info.author}` : null,
+      (info.childName || info.age) ? `対象：${[info.childName, info.age].filter(Boolean).join(" / ")}` : null,
+    ].filter(Boolean).join("\n");
+
+    const overview = [
+      "【概要（観察メモ）】",
+      info.raw ? info.raw : "（未入力）",
+    ].join("\n");
+
+    const domains = [
+      "【発達領域別所見】",
+      `（A）認知・理解\n${info.dom.cog || "（未入力）"}`,
+      `（B）言語・表現\n${info.dom.lang || "（未入力）"}`,
+      `（C）社会性・対人\n${info.dom.soc || "（未入力）"}`,
+      `（D）情緒・自己調整\n${info.dom.emo || "（未入力）"}`,
+      `（E）運動（粗大/微細）\n${info.dom.motor || "（未入力）"}`,
+      `（F）生活（身辺自立・集団生活）\n${info.dom.life || "（未入力）"}`,
+    ].join("\n\n");
+
+    const careText = cares.length
+      ? [
+          "【配慮事項（次の支援・目標）】",
+          ...cares.map((c, i) => {
+            const title = c.title ? c.title : `配慮事項${i+1}`;
+            return [
+              `（${i+1}）${title}`,
+              c.issue ? `- 課題：${c.issue.replaceAll("\n","\n  ")}` : "- 課題：（未入力）",
+              c.basis ? `- 根拠：${c.basis.replaceAll("\n","\n  ")}` : "- 根拠：（未入力）",
+              c.support ? `- 支援/目標：${c.support.replaceAll("\n","\n  ")}` : "- 支援/目標：（未入力）",
+            ].join("\n");
+          })
+        ].join("\n\n")
+      : "【配慮事項（次の支援・目標）】\n（未入力）";
+
+    const out = [head, "", overview, "", domains, "", careText].join("\n");
+    $("out").textContent = out;
+    saveDraft();
+  }
+
+  async function copyOutput() {
+    const text = $("out").textContent;
+    try {
+      await navigator.clipboard.writeText(text);
+      alert("コピーしました。");
+    } catch(e) {
+      alert("コピーに失敗しました。ブラウザの権限設定を確認してください。");
+    }
+  }
+
+  function downloadTxt() {
+    const text = $("out").textContent;
+    const blob = new Blob([text], {type:"text/plain;charset=utf-8"});
+    const a = document.createElement("a");
+    const name = `dev_record_${$("date").value || nowISO()}.txt`;
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(a.href);
+  }
+
+  // --------- Example ----------
+  function insertExample() {
+    $("raw").value = [
+      "ルールの理解はあるが、相手に伝えたい気持ちが強く、強い口調になってしまう場面がある。",
+      "集団遊びでは順番を守れる。納得いかないときに言葉が直線的になりやすい。",
+      "落ち着くと自分から謝る・やり直す姿もみられる。",
+    ].join("\n");
+    saveDraft();
+  }
+
+  function addCareExample() {
+    addCareItem(
+      "対人場面での言葉の選び方",
+      "相手に伝えたい気持ちが強く、語気が強くなってしまう場面がある。",
+      "ルール理解はあり、正しさを共有したい意欲が高い。気持ちが高まると表現が直線的になりやすい。",
+      "ルール理解を認めた上で、友だちへの言い換え（提案の形・やさしい言い方）を一緒に考える。高まったときは『一呼吸→短い言葉→先生に相談』など手順を共有し、成功体験を積む。"
+    );
+    saveDraft();
+  }
+
+  // --------- Wire up ----------
+  $("date").value = nowISO();
+
+  $("btnCategorize").addEventListener("click", categorize);
+  $("btnExample").addEventListener("click", insertExample);
+  $("btnSaveDraft").addEventListener("click", () => { saveDraft(); alert("下書きを保存しました。"); });
+  $("btnReset").addEventListener("click", () => {
+    if (confirm("端末内データを削除してリセットします。よろしいですか？")) resetAll();
+  });
+
+  $("btnAddCare").addEventListener("click", () => addCareItem());
+  $("btnAddCareExample").addEventListener("click", addCareExample);
+
+  $("btnGenerate").addEventListener("click", generate);
+  $("btnCopy").addEventListener("click", copyOutput);
+  $("btnDownload").addEventListener("click", downloadTxt);
+
+  // autosave for main fields
+  ["childName","age","date","docType","freq","author","raw","dom_cog","dom_lang","dom_soc","dom_emo","dom_motor","dom_life"].forEach(id => {
+    $(id).addEventListener("input", () => saveDraft());
+    $(id).addEventListener("change", () => saveDraft());
+  });
+
+  // initial load
+  loadDraft();
+
+  // If no care items exist, start with one empty row for convenience
+  if ($("careList").children.length === 0) addCareItem();
+
+</script>
+</body>
+        </html>
